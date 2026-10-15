@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from datetime import datetime
+from ai_scientist.codex_backend import configure_backend
 from ai_scientist.llm import create_client
 
 from contextlib import contextmanager
@@ -41,6 +42,9 @@ def save_token_tracker(idea_dir):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run AI scientist experiments")
+    parser.add_argument("--backend", choices=["api", "codex"], default=None,
+                        help="Use API providers or the ChatGPT-authenticated Codex CLI for all stages")
+    parser.add_argument("--config", default="bfts_config.yaml", help="Tree-search configuration")
     parser.add_argument(
         "--writeup-type",
         type=str,
@@ -181,6 +185,7 @@ def redirect_stdout_stderr_to_file(log_file_path):
 
 if __name__ == "__main__":
     args = parse_arguments()
+    configure_backend(args.backend)
     os.environ["AI_SCIENTIST_ROOT"] = os.path.dirname(os.path.abspath(__file__))
     print(f"Set AI_SCIENTIST_ROOT to {os.environ['AI_SCIENTIST_ROOT']}")
 
@@ -246,7 +251,7 @@ if __name__ == "__main__":
     with open(idea_path_json, "w") as f:
         json.dump(ideas[args.idea_idx], f, indent=4)
 
-    config_path = "bfts_config.yaml"
+    config_path = args.config
     idea_config_path = edit_bfts_config_file(
         config_path,
         idea_dir,
@@ -343,27 +348,6 @@ if __name__ == "__main__":
             process.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
-
-    # Additional cleanup: find any orphaned processes containing specific keywords
-    keywords = ["python", "torch", "mp", "bfts", "experiment"]
-    for proc in psutil.process_iter(["name", "cmdline"]):
-        try:
-            # Check both process name and command line arguments
-            cmdline = " ".join(proc.cmdline()).lower()
-            if any(keyword in cmdline for keyword in keywords):
-                proc.send_signal(signal.SIGTERM)
-                proc.wait(timeout=3)
-                if proc.is_running():
-                    proc.kill()
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
-            continue
-
-    # Finally, terminate the current process
-    # current_process.send_signal(signal.SIGTERM)
-    # try:
-    #     current_process.wait(timeout=3)
-    # except psutil.TimeoutExpired:
-    #     current_process.kill()
 
     # exit the program
     sys.exit(0)

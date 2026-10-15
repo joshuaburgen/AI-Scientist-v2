@@ -38,6 +38,10 @@ This system autonomously generates hypotheses, runs experiments, analyzes data, 
 
 ## Requirements
 
+**ChatGPT Plus / Codex subscription:** This checkout supports the official Codex CLI
+as an alternative to API keys. Use `--backend codex` to route all model calls through
+your ChatGPT login. See [the setup and smoke-test guide](docs/codex-subscription.md).
+
 This code is designed to run on Linux with NVIDIA GPUs using CUDA and PyTorch.
 
 ### Installation

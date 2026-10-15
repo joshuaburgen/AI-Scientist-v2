@@ -4,6 +4,8 @@ import re
 from typing import Any
 from ai_scientist.utils.token_tracker import track_token_usage
 
+from ai_scientist.codex_backend import CodexClient, use_codex
+
 import anthropic
 import backoff
 import openai
@@ -11,6 +13,7 @@ import openai
 MAX_NUM_TOKENS = 4096
 
 AVAILABLE_LLMS = [
+    "codex",
     "claude-3-5-sonnet-20240620",
     "claude-3-5-sonnet-20241022",
     # OpenAI models
@@ -83,7 +86,6 @@ AVAILABLE_LLMS = [
         anthropic.RateLimitError,
     ),
 )
-@track_token_usage
 def get_batch_responses_from_llm(
     prompt,
     client,
@@ -94,6 +96,9 @@ def get_batch_responses_from_llm(
     temperature=0.7,
     n_responses=1,
 ) -> tuple[list[str], list[list[dict[str, Any]]]]:
+    if use_codex(model):
+        model = "codex"
+        client = CodexClient()
     msg = prompt
     if msg_history is None:
         msg_history = []
@@ -115,7 +120,7 @@ def get_batch_responses_from_llm(
         new_msg_history = [
             new_msg_history + [{"role": "assistant", "content": c}] for c in content
         ]
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         new_msg_history = msg_history + [{"role": "user", "content": msg}]
         response = client.chat.completions.create(
             model=model,
@@ -226,7 +231,7 @@ def make_llm_call(client, model, temperature, system_message, prompt):
             n=1,
             stop=None,
         )
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         return client.chat.completions.create(
             model=model,
             messages=[
@@ -273,6 +278,9 @@ def get_response_from_llm(
     msg_history=None,
     temperature=0.7,
 ) -> tuple[str, list[dict[str, Any]]]:
+    if use_codex(model):
+        model = "codex"
+        client = CodexClient()
     msg = prompt
     if msg_history is None:
         msg_history = []
@@ -324,7 +332,7 @@ def get_response_from_llm(
         )
         content = response.choices[0].message.content
         new_msg_history = new_msg_history + [{"role": "assistant", "content": content}]
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         new_msg_history = msg_history + [{"role": "user", "content": msg}]
         response = make_llm_call(
             client,
@@ -478,6 +486,8 @@ def extract_json_between_markers(llm_output: str) -> dict | None:
 
 
 def create_client(model) -> tuple[Any, str]:
+    if use_codex(model):
+        return CodexClient(), "codex"
     if model.startswith("claude-"):
         print(f"Using Anthropic API with model {model}.")
         return anthropic.Anthropic(), model
@@ -495,7 +505,7 @@ def create_client(model) -> tuple[Any, str]:
             api_key=os.environ.get("OLLAMA_API_KEY", ""),
             base_url="http://localhost:11434/v1",
         ), model
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         print(f"Using OpenAI API with model {model}.")
         return openai.OpenAI(), model
     elif "o1" in model or "o3" in model:

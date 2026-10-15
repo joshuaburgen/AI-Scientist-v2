@@ -1,4 +1,5 @@
 import json
+from ai_scientist.codex_backend import CodexClient, use_codex
 import logging
 import time
 
@@ -18,6 +19,8 @@ OPENAI_TIMEOUT_EXCEPTIONS = (
 )
 
 def get_ai_client(model: str, max_retries=2) -> openai.OpenAI:
+    if use_codex(model):
+        return CodexClient()
     if model.startswith("ollama/"):
         client = openai.OpenAI(
             base_url="http://localhost:11434/v1", 

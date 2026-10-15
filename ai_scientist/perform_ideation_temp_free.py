@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 import sys
 
 sys.path.append(osp.join(osp.dirname(__file__), ".."))
+from ai_scientist.codex_backend import configure_backend
 from ai_scientist.llm import (
     AVAILABLE_LLMS,
     create_client,
@@ -270,6 +271,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate AI scientist proposals - template free"
     )
+    parser.add_argument("--backend", choices=["api", "codex"], default=None)
     parser.add_argument(
         "--model",
         type=str,
@@ -296,6 +298,7 @@ if __name__ == "__main__":
         help="Number of reflection rounds per proposal.",
     )
     args = parser.parse_args()
+    configure_backend(args.backend)
 
     # Create the LLM client
     client, client_model = create_client(args.model)

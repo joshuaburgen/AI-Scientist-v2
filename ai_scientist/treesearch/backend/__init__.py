@@ -1,3 +1,4 @@
+from ai_scientist.codex_backend import CodexClient, use_codex
 from . import backend_anthropic, backend_openai
 from .utils import FunctionSpec, OutputType, PromptType, compile_prompt_to_md
 
@@ -11,6 +12,8 @@ def get_ai_client(model: str, **model_kwargs):
     Returns:
         An instance of the appropriate AI client.
     """
+    if use_codex(model):
+        return CodexClient()
     if "claude-" in model:
         return backend_anthropic.get_ai_client(model=model, **model_kwargs)
     else:
@@ -40,6 +43,9 @@ def query(
     Returns:
         OutputType: A string completion if func_spec is None, otherwise a dict with the function call details.
     """
+
+    if use_codex(model):
+        model = "codex"
 
     model_kwargs = model_kwargs | {
         "model": model,

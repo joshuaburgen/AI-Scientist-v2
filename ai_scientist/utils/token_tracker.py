@@ -131,7 +131,8 @@ class TokenTracker:
         for model, tokens in self.token_counts.items():
             summary[model] = {
                 "tokens": tokens.copy(),
-                "cost (USD)": self.calculate_cost(model),
+                "cost (USD)": None if model == "codex" else self.calculate_cost(model),
+                **({"billing": "ChatGPT subscription; not API pricing"} if model == "codex" else {}),
             }
         return summary
 
@@ -154,6 +155,8 @@ def track_token_usage(func):
         logging.info("kwargs: ", kwargs)
 
         result = await func(*args, **kwargs)
+        if result.model == "codex":
+            return result  # CLI usage is recorded at the subprocess boundary.
         model = result.model
         timestamp = result.created
 
@@ -190,6 +193,8 @@ def track_token_usage(func):
                 "Either 'prompt' or 'system_message' must be provided for token tracking"
             )
         result = func(*args, **kwargs)
+        if result.model == "codex":
+            return result  # Includes batch/tree-search calls; do not count twice.
         model = result.model
         timestamp = result.created
         logging.info("args: ", args)

@@ -27,3 +27,6 @@ jsonschema
 omegaconf
 botocore
 boto3
+
+# Subprocess cleanup (also used by the experiment launcher)
+psutil

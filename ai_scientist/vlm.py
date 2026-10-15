@@ -1,4 +1,5 @@
 import base64
+from ai_scientist.codex_backend import CodexClient, use_codex
 from typing import Any
 import re
 import json
@@ -11,6 +12,7 @@ from ai_scientist.utils.token_tracker import track_token_usage
 MAX_NUM_TOKENS = 4096
 
 AVAILABLE_VLMS = [
+    "codex",
     "gpt-4o-2024-05-13",
     "gpt-4o-2024-08-06",
     "gpt-4o-2024-11-20",
@@ -64,7 +66,7 @@ def make_llm_call(client, model, temperature, system_message, prompt):
             stop=None,
             seed=0,
         )
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         return client.chat.completions.create(
             model=model,
             messages=[
@@ -104,7 +106,7 @@ def make_vlm_call(client, model, temperature, system_message, prompt):
             temperature=temperature,
             max_tokens=MAX_NUM_TOKENS,
         )
-    elif "gpt" in model:
+    elif use_codex(model) or "gpt" in model:
         return client.chat.completions.create(
             model=model,
             messages=[
@@ -143,6 +145,9 @@ def get_response_from_vlm(
     """Get response from vision-language model."""
     if msg_history is None:
         msg_history = []
+
+    if use_codex(model):
+        model, client = "codex", CodexClient()
 
     if model in AVAILABLE_VLMS:
         # Convert single image path to list for consistent handling
@@ -194,6 +199,8 @@ def get_response_from_vlm(
 
 def create_client(model: str) -> tuple[Any, str]:
     """Create client for vision-language model."""
+    if use_codex(model):
+        return CodexClient(), "codex"
     if model in [
         "gpt-4o-2024-05-13",
         "gpt-4o-2024-08-06",
@@ -278,6 +285,9 @@ def get_batch_responses_from_vlm(
     """
     if msg_history is None:
         msg_history = []
+
+    if use_codex(model):
+        model, client = "codex", CodexClient()
 
     if model in AVAILABLE_VLMS:
         # Convert single image path to list
