@@ -5,6 +5,9 @@
 
 ## 准备
 
+本次已实测 Codex CLI `0.162.1`。另一台机器可安装相同版本以避免 CLI 参数差异：
+`npm install -g @openai/codex@0.162.1`。
+
 1. 在**实际运行 Python 的环境**安装当前版本的官方 Codex CLI：
    `npm install -g @openai/codex`。
 2. 执行 `codex login`，在浏览器选择你的 ChatGPT 账号。
@@ -19,7 +22,7 @@ WSL、容器和 Windows 的登录状态可能不同，需在运行实验的环�
 
 ```bash
 python -m venv .venv
-# Linux: source .venv/bin/activate
+source .venv/bin/activate
 # Windows PowerShell 可直接用 .venv\Scripts\python.exe 代替 python
 python -m pip install openai anthropic backoff tiktoken jsonschema pillow funcy rich dataclasses-json psutil
 python -m unittest discover -s tests -v
@@ -30,6 +33,37 @@ python -m scripts.smoke_codex --full
 离线测试不调用模型。两个 smoke 命令会使用少量订阅额度；`--full` 还验证
 实验管理器的结构化结果、历史消息、批量回复和图片输入。
 轻量环境不足以启动完整研究流水线。
+
+## Linux + NVIDIA 新机器迁移顺序
+
+先把包含本次改造的 Git 提交同步到目标机器；不要只克隆未经改造的上游仓库。
+在仓库根目录执行 `git log -2 --oneline`，确认能看到 Codex 后端相关提交。
+`.venv` 和登录凭据不在 Git 中，需要在目标机器重新安装和登录。
+
+安装 README 的完整研究环境、`pip install -r requirements.txt` 后，在同一个终端依次检查：
+
+```bash
+codex --version
+codex login
+codex login status
+python -m pip check
+python launch_scientist_bfts.py --help
+nvidia-smi
+python -c "import torch; assert torch.cuda.is_available(), 'CUDA unavailable'; print(torch.cuda.get_device_name(0))"
+python -m unittest discover -s tests -v
+python -m scripts.smoke_codex --full
+```
+
+`--help` 会导入完整流水线，能提前发现缺少的 Python 依赖，但不会启动实验或调用模型。
+GPU 检查应输出显卡名称。最后一个命令通过后，再运行下面的小规模实验。
+不要把本机的 Windows 虚拟环境复制到 Linux。
+
+若服务器无法打开浏览器，先查看 `codex login --help`，按该版本提供的设备登录方式操作。
+使用 SSH、容器、conda 或批处理任务时，确保实际运行任务的用户和环境能访问刚才登录的 CLI。
+如果命令提示不支持 `--ignore-user-config` 等参数，请先对齐上面的已测试 CLI 版本。
+
+需要论文 PDF 时，还应确认 `pdflatex --version`、`bibtex --version`、`chktex --version`
+和 `pdftoppm -v` 可运行；它们不是仅安装 Python requirements 就能获得的。
 
 ## 生成想法
 
@@ -88,6 +122,7 @@ python launch_scientist_bfts.py \
 - 超时会清理本次 CLI 子进程。额度耗尽、登录失效或输出校验失败会报错，不无限重试、不转用 API。
   上层原有阶段可能捕获错误并继续；本次改造没有增加全流程断点恢复或自动等额度功能。
 - Plus 额度与其他 Codex 使用共享。订阅成本显示为 `null`，不能把 API 单价用于计算订阅费用。
+- 原有 token 统计是进程内统计，主进程保存的文件不会合并实验 worker 的全部调用；不能将它当作完整额度账单。
 - 完整实验的硬件需求、生成代码的执行风险和原有流程成功率仍然存在。
 
 官方文档：[非交互模式](https://learn.chatgpt.com/docs/non-interactive-mode)、
